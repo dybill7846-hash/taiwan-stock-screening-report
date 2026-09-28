@@ -1,0 +1,71 @@
+name: Publish verified daily report
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-report-pages
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Validate and stage only the four public report files
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from datetime import date
+          from pathlib import Path
+
+          names = ("index.html", "report.md", "report.json", ".nojekyll")
+          payloads = {}
+          for name in names:
+              path = Path(name)
+              if path.is_symlink() or not path.is_file():
+                  raise SystemExit(f"Missing or invalid public report file: {name}")
+              payloads[name] = path.read_bytes()
+          metadata = json.loads(payloads["report.json"])
+          if metadata.get("schema_version") != "1" or metadata.get("status") != "published_analysis":
+              raise SystemExit("Report metadata is not a completed analysis")
+          if date.fromisoformat(metadata["target_trade_date"]) <= date.fromisoformat(metadata["analysis_date"]):
+              raise SystemExit("Report trading dates are invalid")
+          for name, field in (("index.html", "html_sha256"), ("report.md", "report_sha256")):
+              if hashlib.sha256(payloads[name]).hexdigest() != metadata[field]:
+                  raise SystemExit(f"Report hash mismatch: {name}")
+          if payloads[".nojekyll"]:
+              raise SystemExit("The .nojekyll marker must be empty")
+          destination = Path(os.environ["RUNNER_TEMP"]) / "public-report-site"
+          destination.mkdir()
+          for name in names:
+              (destination / name).write_bytes(payloads[name])
+          PY
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          path: ${{ runner.temp }}/public-report-site
+          retention-days: 1
+      - name: Deploy the report website
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
