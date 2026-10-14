@@ -1,8 +1,8 @@
 {
   "schema_version": "1",
   "status": "published_analysis",
-  "analysis_date": "2026-10-13",
-  "target_trade_date": "2026-10-14",
-  "report_sha256": "f524a0f0a8b74b44376173d766eb7c4cd9cf610f58ffa081eec7a2eaf8b8ad03",
-  "html_sha256": "434000063213cddb18df680f360b55a80dde3adbd79b71a2409540d88680a508"
+  "analysis_date": "2026-10-14",
+  "target_trade_date": "2026-10-15",
+  "report_sha256": "c22b3edcd31dba9f08ced70ead6da6ff5295dc9278a96c27dd8c0dfd47ba8d29",
+  "html_sha256": "b75fdae66665c31f073867c293bff8acead8e653b81ff5589865271fae777679"
 }
